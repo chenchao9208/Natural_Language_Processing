@@ -1,0 +1,329 @@
+####################################################################################
+                       COMS 4705 - Natural Language Processing
+                                   Assignment 3
+                            Word Sense Disambiguation
+####################################################################################
+Name: Chao Chen
+UNI : cc3736
+####################################################################################
+How to run the code:
+    python main.py <training_file> <test_file> <output_file> <language>
+e.g.
+    python main.py data/English-train.xml data/English-dev.xml English.answer English
+    python main.py data/Spanish-train.xml data/Spanish-dev.xml Spanish.answer Spanish
+    python main.py data/Catalan-train.xml data/Catalan-dev.xml Catalan.answer Catalan
+####################################################################################
+The final result of this experiment is shown in Table 1, the feature plane selection,
+classifier selection and configuration will be shown in the folloing report.
+
+                             Table 1: Final result
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+               Best Result |   64.7%   |   83.2%   |   85.4%
+
+####################################################################################
+The experiments results in this report should contain three parameters: precision, 
+recall and attempted. But all test cases show that precision equals to recall, and 
+attempted is always 100%, so in the following report, I only use the precision to 
+represent the result.
+
+Run the given baseline.py, we get the following result:
+
+                            Table 2: Baseline result
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                Baseline   |   53.5%   |   68.4%   |   67.8%
+
+
+Then I constructed classifiers with only features in the window (k=10), and did no 
+improvement. (No stemming, no punctuation elimination...)
+The result is shown in Table 3.
+
+                       Table 3 Naked classifiers' result
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   62.0%   |   78.4%   |   82.1%
+              ---------------------------------------------------
+                KNeighbors |   56.6%   |   69.9%   |   70.8%
+
+According to the requirement, based on the original model, we need to add to or 
+modifiy the feature plane to get better performance. We also need to reconsider the 
+selection of classifier and its parameter, thus the works can be listed as below:
+
+     Feature                               Requirement
+-------------------------------------------------------
+Feature Selection & Modification:
+
+  1. window size K .........................   6
+  2. ignore_U
+  3. vector_0_1
+  4. remove_punctuations
+  5. lowercase
+  6. stemming   ............................   4.a
+  7. remove_stop_words   ...................   4.a
+  8. expand_synsets_hypernyms_hyponyms   ...   4.b
+  9. 4c_feature   ..........................   4.c
+  10. chi_square   .........................   4.d
+  11. pmi   ................................   4.d
+
+Classifier Selection & Modification
+
+  12. classifier_selection   ...............   6
+  13. classifier_parameter_selection   .....   6
+
+Description:
+  1. The window size k described in Implementation-1 in the requirement.
+  2. In the training set, to ignore the instance labeled with Unknown senseid.
+  3. In the feature space, given a vector representation of an instance,
+     whether to represent it in "binary form 0_1" or "count form 0_N"
+     e.g.:
+     	 sentence = "b d d e e e"
+     	 feature plane = [a,b,c,d,e]
+         If choose 0_N, a vector could be [0,1,0,2,3], where each value 
+     indicates the number of times a feature appears in the instance sentence.
+         If choose 0_1, the vector will become [0,1,0,1,1], where each value
+     indicates if the feature appears in the instance sentece. (yes-1, no-0)
+  4. After tokenize the sentence, ignore all the tokens that are punctuations.
+  5. Convert all the sentence to lowercase
+  6. do stemming to the tokens, described in requirement 4.a
+  7. ignore the stop words, described in the requirement 4.a
+  8. expand the feature plane with the synsets, hypernyms and hyponyms of the
+     features.
+  9. feature described in the requirement 4.c
+  10. feature chi_square described in the requirement 4.d
+  11. feature pointwise mutua information described in the requirement 4.d
+
+  12. given default classifier parameters, select the classifier with the 
+      best performance
+  13. with the best classifier, modify and get the parameter to get the best
+      performance.
+
+In the following report, accumulated feature selection will be performed, then 
+compare each result with the former result, we can see if the feature helps or not.
+
+------------------------------------------------------------------------------------
+Default Selection
+
+Based on the discussion on Piazza, feature (2)(3)(4)(5) are selected as precondtion
+for better performance. Then with there features included, the performance is shown
+in Table 4.
+
+                           Table 4 [(2)(3)(4)(5)]
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   61.5%   |   78.9%   |   82.3%
+              ---------------------------------------------------
+                KNeighbors |   55.6%   |   68.5%   |   72.2%
+
+Compared to Table 3, we can find that, these feature combinations benefit the Spanish
+and Catalan model, but does not improve the performance for English. The precision
+for English models are decreased. 
+------------------------------------------------------------------------------------
+Remove stop words
+
+                           Table 5 (7) + [(2)(3)(4)(5)]
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   62.7%   |   79.3%   |     -
+              ---------------------------------------------------
+                KNeighbors |   52.8%   |   69.3%   |     -
+
+Compared to Table 4, we can observe that removing stop words gives dramatic
+improvement for Spanish models and English LinearSVC model, introducing about
+1% increase on the percision of English LinearSVC model. However, this gives bad 
+effect on English KNeighbors model. Here Catalan is no result because nltk does not 
+provide Catalan stop words, and this feature is not applicable for Catalan.
+------------------------------------------------------------------------------------
+Do stemming
+
+                          Table 6 (6) + [(2)(3)(4)(5)(7)]
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   62.6%   |   80.8%   |     -
+              ---------------------------------------------------
+                KNeighbors |   54.4%   |   70.6%   |     -
+
+Compared to Table 5, stemming gives dramatic improvement, about 1.5% increase for
+each of the Spanish models, and the English KNeighbors model, despite it decreases 
+the precision of English LinearSVC model by 0.1%, it's still considered as a valuable
+feature modification method. Since nltk does not provide stemmer for Catalan, this
+method is not applicable for Catalan.
+------------------------------------------------------------------------------------
+expand feature space with synsets, hypernyms and hyponyms
+
+                       Table 7 (8) + [(2)(3)(4)(5)(6)(7)]
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   62.6%   |     -     |     -
+              ---------------------------------------------------
+                KNeighbors |   54.2%   |     -     |     -
+
+NLTK does not support synsets of Spanish and Catalan, so they are not included here.
+Compared to Table 6, we can observer that so far the expansion with synsets, 
+hypernyms and hyponyms doesn't work for the language model. Besides, this feature 
+extraction takes much longer time than others. Thus it's not a good feature 
+extraction, and in the following process, this feature will not be included.
+------------------------------------------------------------------------------------
+feature described in 4.c)
+
+                       Table 8 (9) + [(2)(3)(4)(5)(6)(7)]
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   62.6%   |   80.8%   |   82.4%
+              ---------------------------------------------------
+                KNeighbors |   54.5%   |   70.5%   |   72.0%
+
+Compared to Table 7 and Table 4, the feature in 4.c) doesn't introduce much impovement
+except for the English KNeighbors classifier by 0.3% and Catalan LinearSVC by 0.1%. 
+------------------------------------------------------------------------------------
+chi_square in 4.d)
+
+                       Table 9 (10) + [(2)(3)(4)(5)(6)(7)(9)]
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   62.6%   |   80.8%   |   82.5%
+              ---------------------------------------------------
+                KNeighbors |   54.6%   |   70.5%   |   72.1%
+
+Compared to Table 8, the chi_square feature introduces 0.1% improvement for English
+KNeighbors classifier and Catalan KNeighbors classifier. The improvement is weak.
+------------------------------------------------------------------------------------
+pointwise mutua information in 4.d)
+
+                       Table 10 (11) + [(2)(3)(4)(5)(6)(7)(9)(10)]
+
+                           |  English  |  Spanish  |  Catalan
+              ---------------------------------------------------
+                LinearSVC  |   62.8%   |   80.7%   |   82.5%
+              ---------------------------------------------------
+                KNeighbors |   54.7%   |   70.4%   |   72.1%
+
+Compared to Table 9, we can discover that PMI feature gives improvement for English
+models by 0.1% ~ 0.2%, but doesn't do well on other languages.
+------------------------------------------------------------------------------------
+Discussion the findings during the above process:
+
+- Over the three languages, Catalan's model gives the highest precision, while the 
+precision of English models are much lower than the other two's.
+- LinearSVC always performs better that KNeighbors classifier with defaul settings.
+
+Interesting finding:
+- the process of (4)remove_punctuations, (5)lowercase, (6)stemming and (7)remove_stop_
+words are all performed on the list of tokens on the left/right of the target word. 
+Here for English model, the order execution of (6) and (7) affects the precision.
+
+For English LinearSVC model, given features (2)(3)(4)(5)(6)(7) are included, 
+with the order -> (6)stemming -> (7)remove stop words ->, precision = 62.7%
+with the order -> (7)remove stop words -> (6)stemming ->, precision = 62.6%
+
+The order of (4)remove_punctuations and (5)lowercase does not affect the result.
+
+The reason might be: If (6) is executed before (7), the stop words will be restored 
+from other grammatical tenses and then be removed. If (7) is executed before (6), the 
+stop words with other grammatical tenses might not be recognized and might not be 
+removed from the list. 
+
+
+####################################################################################
+                        Find best feature spaces and models
+####################################################################################
+There are four parts of configurations need to define:
+   1. (1)window size K
+   2. combination of features from (2)(3)(4)(5)(6)(7)(8)(9)(10)(11)
+   3. (12)selection of classifier(with default parameters)
+   4. (13)selection of classifier parameters
+
+It will take lots of time to try all possible configurations.
+Here I will not traverse all the possibilities, but use the following strategy to 
+find out the best feature spaces and models:
+
+For any part of the four configurations, lock the other 3 parts unchanged, figure out
+the best value of this part and save it.
+
+do the above process for all the four parts.
+
+Take the English model for example:
+
+Firstly, 
+I'll figure out 2. the best combination of features. 
+So I set:
+    1. k=10
+    3. model = LinearSVC
+    4. C=1(default)
+Then I found that the best combination of features for English is (2)(4)(5)(6)(7)(9).
+
+Secondly, 
+I'll figure out 1. the best window size k.
+So I set:
+    2. features = (2)(4)(5)(6)(7)(9)
+    3. model = LinearSVC
+    4. C=1(default)
+Then I found that the best value is k = 13.
+
+Thirdly,
+I'll figure out 3. the best classifier model.
+So I set:
+    1. K = 13
+    2. features = (2)(4)(5)(6)(7)(9)
+    4. default settings
+The models are chosen from:
+    LinearSVC, SVC(kernel='linear'), SVC(kernel='rbf'), RandomForestClassifier,
+    KNeighborsClassifier, SGDClassifier, RidgeClassifier, Perceptron, 
+    PassiveAggressiveClassifier, BernoulliNB, MultinomialNB, GaussianNB
+
+    part of the result is shown as
+            #clf = RandomForestClassifier() 58.9
+            #clf = SGDClassifier() 61.1
+            #clf = MultinomialNB() 62.9
+            #clf = BernoulliNB() 55.8
+            #clf = Perceptron() 60.4
+            #clf = PassiveAggressiveClassifier() 62.1
+            #clf = RidgeClassifier() 62.7
+            #clf = svm.LinearSVC() 62.5
+Then the model with highest precision, MultinomiaNB, is chosen.
+
+Finally,
+I'll figure out 4. the best parameter for the classifier.
+So I set:
+    1. K = 13
+    2. features = (2)(4)(5)(6)(7)(9)
+    3. MultinomiaNB (Native Bayes)
+Then I found that the best parameter for MultinomiaNB is alpha = 0.95
+
+Apply the same approach for Spanish and Catalan, we have the folloowing conclusive 
+result:
+
+English:
+    1. K = 13
+    2. features = (2)(4)(5)(6)(7)(9)
+    3. classifier = sklearn.naive_bayes.MultinomiaNB
+    4. parameter: alpha = 0.95, fit_prior = True, class_prior = None
+
+ It gives precision = 64.7%.
+
+Spanish:
+    1. K = 13
+    2. features = (2)(4)(5)(6)(7)(9)
+    3. classifier = sklearn.naive_bayes.MultinomiaNB
+    4. parameter: alpha = 0.50, fit_prior = True, class_prior = None
+
+ It gives precision = 83.2%.
+
+Catalan:
+    1. K = 13
+    2. features = (2)(3)(4)(5)(9)(11)
+    3. classifier = sklearn.naive_bayes.MultinomiaNB
+    4. parameter: alpha = 0.25, fit_prior = True, class_prior = None
+
+ It gives precision = 85.4%.
+
+
